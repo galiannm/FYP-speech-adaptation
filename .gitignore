@@ -1,0 +1,64 @@
+# Autosave files
+*.asv
+*.m~
+*.autosave
+*.slx.r*
+*.mdl.r*
+
+# Derived content-obscured files
+*.p
+
+# Compiled MEX files
+*.mex*
+
+# Packaged app and toolbox files
+*.mlappinstall
+*.mltbx
+
+# Deployable archives
+*.ctf
+
+# Generated helpsearch folders
+helpsearch*/
+
+# Code generation folders
+slprj/
+sccprj/
+codegen/
+
+# Cache files
+*.slxc
+
+# Cloud based storage dotfile
+.MATLABDriveTag
+
+# buildtool cache folder
+.buildtool/
+
+# SimBiology backup files
+*.sbproj.backup
+*.sbproj.bak
+
+# EEG datasets
+datasets2/
+**/dataCND/
+**/dataEEG/
+
+# MATLAB data files
+*.mat
+*.set
+*.fdt
+*.edf
+*.bdf
+
+# Generated outputs
+output/
+results/
+
+# MATLAB temporary files
+*.asv
+*.m~
+slprj/
+
+# macOS
+.DS_Store

@@ -1,0 +1,221 @@
+FeatureGroup,Folders
+44Phn_ph_cat_activ_vector,sungSpeechCantisani_melody; sungSpeechCantisani_song
+44Phn_ph_cat_onset_vector,sungSpeechCantisani_melody; sungSpeechCantisani_song
+A Left Entropy,cocktailAttSwitch
+A Left Surprisal,cocktailAttSwitch
+A Masker Entropy,cocktailAttSwitch
+A Masker Env+WO+WS,cocktailAttSwitch
+A Masker Surprisal,cocktailAttSwitch
+A Right Entropy,cocktailAttSwitch
+A Right Surprisal,cocktailAttSwitch
+A Target Entropy,cocktailAttSwitch
+A Target Env+WO+WS,cocktailAttSwitch
+A Target Surprisal,cocktailAttSwitch
+AS Left Entropy,cocktailAttSwitch
+AS Left Surprisal,cocktailAttSwitch
+AS Masker Entropy,cocktailAttSwitch
+AS Masker Env+WO+WS,cocktailAttSwitch
+AS Masker Surprisal,cocktailAttSwitch
+AS Right Entropy,cocktailAttSwitch
+AS Right Surprisal,cocktailAttSwitch
+AS Target Entropy,cocktailAttSwitch
+AS Target Env+WO+WS,cocktailAttSwitch
+AS Target Surprisal,cocktailAttSwitch
+AllOnset,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+Anticipation Ms,ComedyShowEEG
+Combined Variable,ComedyShowEEG
+DREX_f0_surprisal,sungSpeechCantisani_melody; sungSpeechCantisani_song
+DerEnvelope,ComedyShowEEG
+Distraction Target Surprisal,cocktailAttSwitch
+Dummy Long Anticipation,ComedyShowEEG
+Dummy No Anticipation,ComedyShowEEG
+Dummy Short Anticipation,ComedyShowEEG
+Entropy,FDSpeech_L1; FDSpeech_L2; fNIRS_podcast; speechTrustEEG
+Entropy+envelope,FDSpeech_L1; FDSpeech_L2
+EnvDerLaughDerWOLAUGH,ComedyShowEEG
+EnvDer_,podcastListeningEEG
+EnvLWOWONoShortLong,ComedyShowEEG
+EnvLauLWOWONoShortLong,ComedyShowEEG
+EnvLaugh,ComedyShowEEG
+EnvWONo,ComedyShowEEG
+Env_,podcastListeningEEG
+Envelope,AAD_KULeuven; AliceSpeech; ComedyShowEEG; FDSpeech_L1; FDSpeech_L2; LalorNatSpeech; LalorNatSpeechReverse; MEGspeechGwilliams; MEGspeechGwilliams_session2; SparrKULee1; childStoriesEEG_Sysoeva; diliBach; fNIRS_podcast; hyperscanningAmir_Listening; hyperscanningAmir_Speaking; melodyGenreSwitchEEG; musicImagery; polyphonicBach; spectrotemporalModulationsIgnacio; speechTrustEEG
+Envelope (E),speechEmotionAdultEEG
+Envelope derivative,BabyRhythm_11mo; BabyRhythm_4mo; BabyRhythm_7mo; BabyRhythm_adults; LalorNatSpeech; fNIRS_podcast; hyperscanningAmir_Listening; hyperscanningAmir_Speaking; polyphonicBach; speechTrustEEG
+Filtered Envelope,ComedyShowEEG
+Full Anticipation Ms,ComedyShowEEG
+General Model Entropy,melodyGenreSwitchEEG
+General Model Reduced Entropy,melodyGenreSwitchEEG
+General Model Reduced Surprise,melodyGenreSwitchEEG
+General Model Surprise,melodyGenreSwitchEEG
+Genre Model Entropy,melodyGenreSwitchEEG
+Genre Model Surprise,melodyGenreSwitchEEG
+Gist Target Surprisal,cocktailAttSwitch
+High A Entropy Masker,cocktailAttSwitch
+High A Entropy Target,cocktailAttSwitch
+IVC_abs,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+IVC_luminance,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+IVC_sq,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+Jazz Model Entropy,melodyGenreSwitchEEG
+Jazz Model Surprise,melodyGenreSwitchEEG
+Left Envelope,cocktailAttSwitch
+Lie Entropy,speechTrustEEG
+Lie Surprisal,speechTrustEEG
+Low A Entropy Masker,cocktailAttSwitch
+Low A Entropy Target,cocktailAttSwitch
+Ls,LalorNatSpeech
+Luminance,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+LuminanceSq,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+MIDI_spotify_note_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+MIDI_spotify_silence_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+MIDI_tonymanual_note_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+MIDI_tonymanual_silence_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+Masker Envelope,cocktailAttSwitch
+Masker Word Onset,cocktailAttSwitch
+Metronome,musicImagery
+Musical expectation (metronome excluded),musicImagery
+New Onset Dummy,ComedyShowEEG
+Note Entropy,melodyGenreSwitchEEG
+Note Surprise,melodyGenreSwitchEEG
+Note duration (h_dur),polyphonicBach
+Note duration (s_dur),polyphonicBach
+Note onset,diliBach; melodyGenreSwitchEEG
+Note onset (metronome excluded),musicImagery
+Note pitch,diliBach
+Note pitch (h_pitch),polyphonicBach
+Note pitch (s_pitch),polyphonicBach
+Onset Entropy,diliBach
+Onset Surprise,diliBach
+Phoneme onset,LalorNatSpeech; MEGspeechGwilliams; MEGspeechGwilliams_session2; hyperscanningAmir_Listening; hyperscanningAmir_Speaking
+Phonetic features,BabyRhythm_11mo; BabyRhythm_4mo; BabyRhythm_7mo; BabyRhythm_adults; FDSpeech_L1; FDSpeech_L2; spectrotemporalModulationsIgnacio
+Pitch Entropy,diliBach
+Pitch Surprise,diliBach
+Pop Model Entropy,melodyGenreSwitchEEG
+Pop Model Surprise,melodyGenreSwitchEEG
+R Left Entropy,cocktailAttSwitch
+R Left Surprisal,cocktailAttSwitch
+R Masker Entropy,cocktailAttSwitch
+R Masker Env+WO+WS,cocktailAttSwitch
+R Masker Surprisal,cocktailAttSwitch
+R Right Entropy,cocktailAttSwitch
+R Right Surprisal,cocktailAttSwitch
+R Target Entropy,cocktailAttSwitch
+R Target Env+WO+WS,cocktailAttSwitch
+R Target Surprisal,cocktailAttSwitch
+Right Envelope,cocktailAttSwitch
+Rock Model Entropy,melodyGenreSwitchEEG
+Rock Model Surprise,melodyGenreSwitchEEG
+S Left Entropy,cocktailAttSwitch
+S Left Surprisal,cocktailAttSwitch
+S Masker Entropy,cocktailAttSwitch
+S Masker Env+WO+WS,cocktailAttSwitch
+S Masker Surprisal,cocktailAttSwitch
+S Right Entropy,cocktailAttSwitch
+S Right Surprisal,cocktailAttSwitch
+S Target Entropy,cocktailAttSwitch
+S Target Env+WO+WS,cocktailAttSwitch
+S Target Surprisal,cocktailAttSwitch
+Semantic dissimilarity,LalorNatSpeech; childStoriesEEG_Sysoeva; hyperscanningAmir_Listening; hyperscanningAmir_Speaking
+Shuffle_surprisal,FDSpeech_L1; FDSpeech_L2
+Spectrogram,BabyRhythm_11mo; BabyRhythm_4mo; BabyRhythm_7mo; BabyRhythm_adults; FDSpeech_L1; FDSpeech_L2; spectrotemporalModulationsIgnacio
+Spectrogram+PhFeat,FDSpeech_L1; FDSpeech_L2
+Spectrogram+PhonFeatures,spectrotemporalModulationsIgnacio
+Surprisal,FDSpeech_L1; FDSpeech_L2; fNIRS_podcast; speechTrustEEG
+Surprisal+Shuffle_surprisal,FDSpeech_L1; FDSpeech_L2
+Surprisal+Word Onset,FDSpeech_L1; FDSpeech_L2
+Surprisal+envelope,FDSpeech_L1; FDSpeech_L2
+Switch Times,melodyGenreSwitchEEG
+Target Envelope,cocktailAttSwitch
+Target Word Onset,cocktailAttSwitch
+Trad Model Entropy,melodyGenreSwitchEEG
+Trad Model Surprise,melodyGenreSwitchEEG
+TransitionOnset,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+Transitions,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+Truth Entropy,speechTrustEEG
+Truth Surprisal,speechTrustEEG
+VanillaEntro_tagged_Mistral,podcastListeningEEG
+VanillaSur_tagged_Mistral,podcastListeningEEG
+Visual Motion,BabyRhythm_11mo; BabyRhythm_4mo; BabyRhythm_7mo; BabyRhythm_adults
+WO_,podcastListeningEEG
+Word onset,AliceSpeech; ComedyShowEEG; FDSpeech_L1; FDSpeech_L2; LalorNatSpeech; LalorNatSpeechReverse; MEGspeechGwilliams; MEGspeechGwilliams_session2; childStoriesEEG_Sysoeva; fNIRS_podcast; hyperscanningAmir_Listening; hyperscanningAmir_Speaking; speechEmotionAdultEEG; speechTrustEEG; sungSpeechCantisani_melody; sungSpeechCantisani_song
+WordOnset,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+Words,SignLanguageEEG_nonSigners; SignLanguageEEG_signers
+allcombinenoder,ComedyShowEEG
+eel_derivative_halfwayrectified,sungSpeechCantisani_melody; sungSpeechCantisani_song
+eel_envelope,sungSpeechCantisani_melody; sungSpeechCantisani_song
+eel_gammatone_env,sungSpeechCantisani_melody; sungSpeechCantisani_song
+eel_gammatone_spec,sungSpeechCantisani_melody; sungSpeechCantisani_song
+envDer (Ed),speechEmotionAdultEEG
+env_del_left,polyphonicBach
+env_del_right,polyphonicBach
+env_left,polyphonicBach
+env_left + onset_left + env_right + onset_right + s_orig_pitch + h_orig_pitch,polyphonicBach
+env_left + onset_left + env_right + onset_right + s_orig_pitch_left + h_orig_pitch_left + s_orig_pitch_right + h_orig_pitch_right,polyphonicBach
+env_mean,polyphonicBach
+env_mean + env_std + onset,polyphonicBach
+env_mean + onset + s_pitch + h_pitch,polyphonicBach
+env_mean_left,polyphonicBach
+env_mean_left + onset_left + env_mean_right + onset_right + s_pitch + h_pitch,polyphonicBach
+env_mean_left + onset_left + env_mean_right + onset_right + s_pitch_left + h_pitch_left + s_pitch_right + h_pitch_right,polyphonicBach
+env_mean_left + onset_left + s_pitch_left + h_pitch_left,polyphonicBach
+env_mean_right,polyphonicBach
+env_mean_right + onset_right + s_pitch_right + h_pitch_right,polyphonicBach
+env_right,polyphonicBach
+env_std,polyphonicBach
+env_std_left,polyphonicBach
+env_std_right,polyphonicBach
+envfornoshortlong,ComedyShowEEG
+fionnCombinedEnvLauLWO,ComedyShowEEG
+fionnCombinedEnvLauLWOWO,ComedyShowEEG
+fionnEnvLaughter,ComedyShowEEG
+fionnEnvWordOnset,ComedyShowEEG
+h_dur_left,polyphonicBach
+h_dur_right,polyphonicBach
+h_onset,polyphonicBach
+h_onset_left,polyphonicBach
+h_onset_right,polyphonicBach
+h_pitch_left,polyphonicBach
+h_pitch_right,polyphonicBach
+idyom2_entropy_MIDI_tonymanual_length,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom2_entropy_MIDI_tonymanual_pitch,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom2_surprisal_MIDI_tonymanual_length,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom2_surprisal_MIDI_tonymanual_pitch,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_spotify_both,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_spotify_length,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_spotify_pitch,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_tonymanual_both,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_tonymanual_length,sungSpeechCantisani_melody; sungSpeechCantisani_song
+idyom_surprisal_MIDI_tonymanual_pitch,sungSpeechCantisani_melody; sungSpeechCantisani_song
+lastWordOnsets,ComedyShowEEG
+librosa_acoustic_onsets_binary,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_acoustic_onsets_strength,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_chroma,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_mel,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_pyin_Sp,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_pyin_f0,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_pyin_f0conf,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_pyin_f0norm,sungSpeechCantisani_melody; sungSpeechCantisani_song
+librosa_rms,sungSpeechCantisani_melody; sungSpeechCantisani_song
+naplib_auditory_spec,sungSpeechCantisani_melody; sungSpeechCantisani_song
+onset,polyphonicBach
+onset_left,polyphonicBach
+onset_right,polyphonicBach
+ph_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+phonotatics,sungSpeechCantisani_melody; sungSpeechCantisani_song
+phonotatics_entropy,sungSpeechCantisani_melody; sungSpeechCantisani_song
+s_dur_left,polyphonicBach
+s_dur_right,polyphonicBach
+s_onset,polyphonicBach
+s_onset_left,polyphonicBach
+s_onset_right,polyphonicBach
+s_pitch_left,polyphonicBach
+s_pitch_right,polyphonicBach
+sil_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+spotify_f0,sungSpeechCantisani_melody; sungSpeechCantisani_song
+spotify_f0norm,sungSpeechCantisani_melody; sungSpeechCantisani_song
+spotify_posteriogram_note,sungSpeechCantisani_melody; sungSpeechCantisani_song
+spotify_posteriogram_onset,sungSpeechCantisani_melody; sungSpeechCantisani_song
+spotify_posteriogram_pitch,sungSpeechCantisani_melody; sungSpeechCantisani_song
+sur,hyperscanningAmir_Listening; hyperscanningAmir_Speaking
+unvoiced_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
+voiced_onsets,sungSpeechCantisani_melody; sungSpeechCantisani_song
