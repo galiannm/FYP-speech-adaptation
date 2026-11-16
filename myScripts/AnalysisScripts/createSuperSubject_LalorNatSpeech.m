@@ -29,7 +29,7 @@ end
 
 assert(isfolder(sourceDir), 'Source folder missing: %s', sourceDir);
 outFile = fullfile(sourceDir, sprintf('%s%d.mat', outputStem, subjectNumber));
-assert(~isfile(outFile), 'Output already exists; not overwriting: %s', outFile);
+%assert(~isfile(outFile), 'Output already exists; not overwriting: %s', outFile);
 
 allFiles = dir(fullfile(sourceDir, [inputStem '*.mat']));
 subjectFiles = {};
@@ -174,7 +174,8 @@ for k = 1:numel(subjectFiles)
         end
         
         % Add EEG recordings
-        sums{stimTrial}(1:newLen, :) = sums{stimTrial}(1:newLen, :) + X;
+        Xstd = std(X(:)); % one std across all samples and electrodes
+        sums{stimTrial}(1:newLen, :) = sums{stimTrial}(1:newLen, :) + X/Xstd; % divide by std which gives an overal std of approx 1
         sampleCounts{stimTrial}(1:newLen, 1) = sampleCounts{stimTrial}(1:newLen, 1) + 1;
         contributorsPerTrial(stimTrial) = contributorsPerTrial(stimTrial) + 1;
         usedAnyTrial = true;

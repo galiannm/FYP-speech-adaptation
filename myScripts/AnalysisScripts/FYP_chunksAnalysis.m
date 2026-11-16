@@ -12,7 +12,11 @@ addpath ../libs/eeglab
 eeglab
 
 %%
-defaultChunkLength = 100; % Seconds
+defaultChunkLength = 10; % Seconds
+
+% Exploratory posterior circle, matching the full-trial analysis.
+posteriorRoiCentre = [0,-0.2];
+posteriorRoiRadius = 0.15;
 close all
 cmaxPred = 0.1;
 
@@ -20,6 +24,7 @@ superSub = true;
 
 % Path to saved results
 scriptFolder = fileparts(mfilename('fullpath'));
+addpath(scriptFolder); % Shared coordinate-based ROI selector
 
 if superSub 
     resultsDir = fullfile(scriptFolder, 'resultsChunks', 'superSubject', 'wordOnset');
@@ -30,14 +35,12 @@ end
 % Dataset names matching the saved results
 % Discover datasets automatically because word-onset feature indices
 % can differ across datasets.
-resultFiles = dir(fullfile(resultsDir, 'trfOut_100sChunk_*.mat')); 
-
+resultFiles = dir(fullfile(resultsDir, sprintf('trfOut_%dsChunk_*.mat', defaultChunkLength)));
 dataMainFolders = {};
 
 for iFile = 1:length(resultFiles)
 
-    tokens = regexp(resultFiles(iFile).name, ...
-        '^trfOut_100sChunk_(.*)_(\d+)\.mat$', 'tokens', 'once');
+    tokens = regexp(resultFiles(iFile).name, sprintf('^trfOut_%dsChunk_(.*)_(\\d+)\\.mat$', defaultChunkLength), 'tokens', 'once');
 
     if isempty(tokens)
         continue
@@ -82,14 +85,12 @@ n400End = 500;
 
 for iiDataset = 1:length(dataMainFolders)
 
-    fprintf('\nProcessing %s\n', ...
-        dataMainFoldersLabels{iiDataset});
+    fprintf('\nProcessing %s\n', dataMainFoldersLabels{iiDataset});
 
     % 0-10s, 10-20s, etc
     for ii = 1:nChunks
 
-        filename = "trfOut_100sChunk_" + ...
-            dataMainFolders{iiDataset} + ii + ".mat";
+        filename = "trfOut_" + defaultChunkLength + "sChunk_" + dataMainFolders{iiDataset} + ii + ".mat";
 
         filepath = fullfile(resultsDir,filename);
 
@@ -150,32 +151,14 @@ for iiDataset = 1:length(dataMainFolders)
             end
         end
 
-        % Find Pz electrode 
-        posteriorElectrodesIdx = [];
-        posteriorElectrodesLabels = {};
-        
-        if isfield(S,'chanlocs') && isstruct(S.chanlocs) && isfield(S.chanlocs,'labels')
-        
-            labels = strtrim(string({S.chanlocs.labels}));
-            
-            datasetName = regexprep(dataMainFolders{iiDataset}, '_cond\d+_stim\d+_$', '');
-
-            switch datasetName 
-                case 'childStoriesEEG_Sysoeva'
-                    posteriorElectrodesLabels = {'Pz','P3','P4','CP1','CP2'};
-                case 'LalorNatSpeech'
-                    posteriorElectrodesLabels = {'A3','A4','A19','A20','A31','A32'};
-                case 'hyperscanningAmir_Listening'
-                    posteriorElectrodesLabels = {'CPz','Pz','P3','P4', 'POz'};
-                otherwise 
-                    posteriorElectrodesLabels = {'Pz','P1','P2', 'CPz','CP1','CP2'};
-
-        
-            end
-
-            posteriorElectrodesIdx = find(ismember(labels, string(posteriorElectrodesLabels)));
+        % Use the same coordinate-based circle for every dataset.
+        posteriorElectrodesIdx = selectScalpROI(S.chanlocs,size(w,2), ...
+            posteriorRoiCentre,posteriorRoiRadius);
+        if ii == 1
+            fprintf('Posterior spatial ROI: %d electrodes\n',numel(posteriorElectrodesIdx));
+            disp(string({S.chanlocs(posteriorElectrodesIdx).labels}));
         end
-        
+
         % Select N400 latency window
         samples = t >= n400Start & t <= n400End;
         
@@ -265,7 +248,7 @@ for iiDataset = 1:length(dataMainFolders)
         plot(time, n400ValRaw(iiDataset,1:dataLen(iiDataset)), 'DisplayName',dataMainFoldersLabels{iiDataset});
 
         xlabel('Time (s)')
-        ylabel('Mean signed Pz TRF amplitude')
+        ylabel('Mean signed posterior ROI TRF amplitude')
         title('N400 window (300-500 ms) - Raw')
 
         subplot(1,2,2)
@@ -287,7 +270,7 @@ for iiDataset = 1:length(dataMainFolders)
             'DisplayName',dataMainFoldersLabels{iiDataset});
         
         xlabel('Time (s)')
-        ylabel('Most negative Pz TRF weight')
+        ylabel('Most negative posterior ROI TRF weight')
         title('N400 window peak (300-500 ms) - Raw')
         
         subplot(1,2,2)
@@ -345,7 +328,8 @@ save(fullfile(resultsDir,'wordOnset_timeAnalysis_summary.mat'), ...
     'dataMainFolders','dataMainFoldersLabels', ...
     'n400Val','n400ValRaw', ...
     'predcorr','pcorr_nonnorm','dataLen', ...
-    'defaultChunkLength','n400Start','n400End');
+    'defaultChunkLength','n400Start','n400End', ...
+    'posteriorRoiCentre','posteriorRoiRadius');
 
 fprintf('\nAnalysis completed.\n');
 
@@ -355,7 +339,7 @@ end
 
 %% Average N400 across datasets
 
-% Use the first 12 chunks (0-120 seconds)
+% Plot the available recording span; contributors can differ at each chunk.
 if superSub
     nPlotChunks = max(dataLen);
 else
@@ -364,13 +348,14 @@ end
 
 time = (0:nPlotChunks-1)*defaultChunkLength + defaultChunkLength/2;
 
-% Keep datasets with all 12 chunks and N400 measurements
-validDatasets = dataLen >= nPlotChunks & all(isfinite(n400Val(:,1:nPlotChunks)),2);
+% Retain series with any valid chunk; omit missing entries at each time point.
+validDatasets = any(isfinite(n400Val(:,1:nPlotChunks)),2);
 
 n400Data = n400Val(validDatasets,1:nPlotChunks);
+n400Data(~isfinite(n400Data)) = NaN;
 
 if isempty(n400Data)
-    warning('No datasets with 12 valid N400 chunks.');
+    warning('No valid N400 measurements available.');
 else
 
     % Average normalized signed amplitude across datasets
@@ -379,6 +364,7 @@ else
 
     nN400 = sum(isfinite(n400Data), 1);
     semN400 = stdN400 ./ sqrt(nN400);
+    semN400(nN400 < 2) = NaN; % SEM needs at least two series.
 
     figure(20);
     clf;
@@ -390,21 +376,22 @@ else
     yline(0,'--');
 
     xlabel('Time (s)');
-    ylabel('Normalised signed Pz amplitude');
-    title('Average N400-window response across datasets');
+    ylabel('Normalised signed posterior ROI amplitude');
+    title('N400-window response: available series per chunk');
 
     grid on;
 
-    fprintf('Datasets included in N400 average: %d\n', sum(validDatasets));
+    fprintf('N400 contributors per chunk:\n'); disp(nN400);
 
 end
 
 
-% Keep datasets with at least 9 valid peak measurements
-validPeakDatasets = dataLen >= nPlotChunks & all(isfinite(n400Peak(:,1:nPlotChunks)),2);
+% Include every series with at least one valid peak measurement
+validPeakDatasets = any(isfinite(n400Peak(:,1:nPlotChunks)),2);
 
 % Average N400 negative peak with error bars
 peakData = n400Peak(validPeakDatasets,1:nPlotChunks);
+peakData(~isfinite(peakData)) = NaN;
 
 if ~isempty(peakData)
 
@@ -413,6 +400,7 @@ if ~isempty(peakData)
 
     nPeak = sum(isfinite(peakData), 1);
     semPeak = stdPeak ./ sqrt(nPeak);
+    semPeak(nPeak < 2) = NaN; % SEM needs at least two series.
 
     figure(21);
     plot(time,meanPeak,'-o','LineWidth',2);
@@ -421,11 +409,11 @@ if ~isempty(peakData)
 
     xlabel('Time (s)');
     ylabel('Normalised negative peak at the considered electrodes');
-    title('Average N400-window negative peak across datasets');
+    title('N400-window negative peak: available series per chunk');
 
     grid on;
 
-    fprintf('Datasets included in peak average: %d\n', sum(validPeakDatasets));
+    fprintf('Peak contributors per chunk:\n'); disp(nPeak);
 
 end
 
@@ -433,15 +421,16 @@ end
 
 time = (0:nPlotChunks-1)*defaultChunkLength + defaultChunkLength/2;
 
-% Keep datasets with at least 9 valid chunks
-validCorrDatasets = dataLen >= nPlotChunks & all(isfinite(pcorr_nonnorm(:,1:nPlotChunks)),2);
+% Include every series with at least one valid correlation
+validCorrDatasets = any(isfinite(pcorr_nonnorm(:,1:nPlotChunks)),2);
 
 % Extract raw prediction correlations
 corrData = pcorr_nonnorm(validCorrDatasets,1:nPlotChunks);
+corrData(~isfinite(corrData)) = NaN;
 
 if isempty(corrData)
 
-    warning('No datasets with 9 valid prediction correlation chunks.');
+    warning('No valid prediction correlations available.');
 
 else
 
@@ -450,6 +439,7 @@ else
     stdCorr = std(corrData, 0, 1, 'omitnan');
     nCorr = sum(isfinite(corrData), 1);
     semCorr = stdCorr ./ sqrt(nCorr);
+    semCorr(nCorr < 2) = NaN; % SEM needs at least two series.
 
     figure(22);
     clf;
@@ -460,11 +450,11 @@ else
 
     xlabel('Time (s)');
     ylabel('Mean prediction correlation (r)');
-    title('Average word-onset prediction correlation across datasets');
+    title('Word-onset prediction correlation: available series per chunk');
 
     grid on;
 
-    fprintf('Datasets included in correlation average: %d\n', sum(validCorrDatasets));
+    fprintf('Full-scalp correlation contributors per chunk:\n'); disp(nCorr);
 
 end
 
@@ -473,15 +463,16 @@ end
 
 time = (0:nPlotChunks-1)*defaultChunkLength + defaultChunkLength/2;
 
-% Keep datasets with at least 9 valid chunks
-validCorrDatasets = dataLen >= nPlotChunks & all(isfinite(pcorr_posterior(:,1:nPlotChunks)),2);
+% Include every series with at least one valid correlation
+validCorrDatasets = any(isfinite(pcorr_posterior(:,1:nPlotChunks)),2);
 
 % Extract raw prediction correlations
 corrDataPosterior = pcorr_posterior(validCorrDatasets,1:nPlotChunks);
+corrDataPosterior(~isfinite(corrDataPosterior)) = NaN;
 
 if isempty(corrDataPosterior)
 
-    warning('No datasets with 9 valid prediction correlation chunks.');
+    warning('No valid prediction correlations available.');
 
 else
 
@@ -490,6 +481,7 @@ else
     stdCorrPos = std(corrDataPosterior, 0, 1, 'omitnan');
     nCorrPos = sum(isfinite(corrDataPosterior), 1);
     semCorrPos = stdCorrPos ./ sqrt(nCorrPos);
+    semCorrPos(nCorrPos < 2) = NaN; % SEM needs at least two series.
 
     figure(24);
     clf;
@@ -500,27 +492,35 @@ else
 
     xlabel('Time (s)');
     ylabel('Mean prediction correlation (r)');
-    title('Average word-onset prediction correlation (of posterior electrodes) across datasets');
+    title('Posterior prediction correlation: available series per chunk');
 
     grid on;
 
-    fprintf('Datasets included in correlation average: %d\n', sum(validCorrDatasets));
+    fprintf('Posterior correlation contributors per chunk:\n'); disp(nCorrPos);
 
 end
 
 
-% average signal 
-figure;
-plot(t, w(:,posteriorElectrodesIdx), 'LineWidth', 1.5);
-xline(300,'--');
-xline(500,'--');
-yline(0,'--');
-
-xlabel('Latency after word onset (ms)');
-ylabel('TRF weight');
-title('Word-onset TRF at the considered electrodes');
+%% Contributor counts for the four aggregate curves
+% A series is a dataset/condition/feature entry, not an independent participant.
+contributorCounts = [sum(isfinite(n400Data),1); ...
+    sum(isfinite(peakData),1); sum(isfinite(corrData),1); ...
+    sum(isfinite(corrDataPosterior),1)];
+figure('Name','Contributors to each chunk average');
+plot(time,contributorCounts','-o','LineWidth',1.5);
+xlabel('Time (s)');
+ylabel('Number of contributing series');
+legend('N400 mean','N400 peak','Full-scalp correlation','Posterior correlation', ...
+    'Location','best');
+title('Available contributors per chunk (composition changes over time)');
+yticks(0:nDatasets);
 grid on;
-
+fprintf('Contributor counts (rows: mean, peak, full-scalp r, posterior r):\n');
+disp(contributorCounts);
+save(fullfile(resultsDir,'wordOnset_aggregate_summary.mat'), ...
+    'time','contributorCounts','dataMainFoldersLabels', ...
+    'n400Data','peakData','corrData','corrDataPosterior', ...
+    'validDatasets','validPeakDatasets','posteriorRoiCentre','posteriorRoiRadius');
 
 %% Average word count across datasets
 
@@ -531,9 +531,7 @@ for iiDataset = 1:nDatasets
 
     for ii = 1:nChunks
 
-        filename = "trfOut_100sChunk_" + ...
-            dataMainFolders{iiDataset} + ii + ".mat";
-
+        filename = "trfOut_" + defaultChunkLength + "sChunk_" + dataMainFolders{iiDataset} + ii + ".mat";
         filepath = fullfile(resultsDir, filename);
 
         if ~isfile(filepath)
@@ -595,18 +593,18 @@ save(fullfile(resultsDir, 'wordCount_summary.mat'), ...
 chunkOfInterest = 4;   % centred at 35 s
 
 disp('Datasets contributing to the 35 s N400 average:')
-disp(dataMainFoldersLabels(validDatasets))
+disp(dataMainFoldersLabels(isfinite(n400Val(:,chunkOfInterest))));
 
 disp('Normalised N400 values at 35 s:')
-disp(n400Val(validDatasets, chunkOfInterest))
+disp(n400Val(isfinite(n400Val(:,chunkOfInterest)), chunkOfInterest))
 
 disp('Normalised peak values at 35 s:')
-disp(n400Peak(validPeakDatasets, chunkOfInterest))
+disp(n400Peak(isfinite(n400Peak(:,chunkOfInterest)), chunkOfInterest))
 
 
 %% Plot individual dataset N400 traces
 
-% Recreate the correct time vector for 9 chunks
+% Recreate the time vector for the chosen recording span.
 timeN400 = (0:nPlotChunks-1)*defaultChunkLength ...
     + defaultChunkLength/2;
 
@@ -625,7 +623,7 @@ xline(35,'r--','LineWidth',1.5);
 yline(0,'k--');
 
 xlabel('Time (s)');
-ylabel('Normalised signed Pz amplitude');
+ylabel('Normalised signed posterior ROI amplitude');
 title('Individual dataset N400 traces');
 
 legend('show','Location','bestoutside');
@@ -634,31 +632,31 @@ grid on;
 
 %% Compare chunk 4 against neighbouring chunks
 
-chunkOfInterest = 4;
-
-datasetNames = string(dataMainFoldersLabels(validDatasets))';
-
-values25 = n400Data(:,3);
-values35 = n400Data(:,4);
-values45 = n400Data(:,5);
-
-% Difference from the average of neighbouring chunks
-difference35 = values35 - (values25 + values45)/2;
-
-results35 = table( ...
-    datasetNames, values25, values35, values45, difference35, ...
-    'VariableNames', ...
-    {'Dataset','At25s','At35s','At45s','Difference35'});
-
-% Sort from strongest positive change to strongest negative
-results35 = sortrows(results35,'Difference35','descend');
-
-disp(results35);
+% chunkOfInterest = 4;
+% 
+% datasetNames = string(dataMainFoldersLabels(validDatasets))';
+% 
+% values25 = n400Data(:,3);
+% values35 = n400Data(:,4);
+% values45 = n400Data(:,5);
+% 
+% % Difference from the average of neighbouring chunks
+% difference35 = values35 - (values25 + values45)/2;
+% 
+% results35 = table( ...
+%     datasetNames, values25, values35, values45, difference35, ...
+%     'VariableNames', ...
+%     {'Dataset','At25s','At35s','At45s','Difference35'});
+% 
+% % Sort from strongest positive change to strongest negative
+% results35 = sortrows(results35,'Difference35','descend');
+% 
+% disp(results35);
 
 
 %% Leave-one-dataset-family-out N400 analysis
 
-% Use the same 9 chunks and eligible entries as Figure 20
+% Use the same span and available entries as Figure 20.
 timeN400 = (0:nPlotChunks-1)*defaultChunkLength ...
     + defaultChunkLength/2;
 
@@ -699,131 +697,220 @@ xline(35,'r--','HandleVisibility','off');
 yline(0,'k--','HandleVisibility','off');
 
 xlabel('Time (s)');
-ylabel('Normalised signed Pz amplitude');
+ylabel('Normalised signed posterior ROI amplitude');
 title('N400 sensitivity to dataset-family exclusion');
 
 legend('show','Location','bestoutside');
 grid on;
 
 
-%% Average N400 giving equal weight to each dataset family
+%% Plot posterior TRF weights for each dataset
+% Uses resultsDir, dataMainFolders and dataMainFoldersLabels
+% already defined by this analysis script.
 
-names = string(dataMainFoldersLabels(validDatasets));
-data = n400Val(validDatasets,1:nPlotChunks);
+figure('Name','Posterior TRFs by dataset');
+layout = tiledlayout('flow','TileSpacing','compact');
 
-families = regexprep(names, '_cond\d+_stim\d+_$', '');
-uniqueFamilies = unique(families, 'stable');
+electrodeFig = figure('Name','Selected electrodes by dataset', ...
+    'Units','normalized','Position',[0.05,0.08,0.90,0.80]);
+electrodeLayout = tiledlayout(electrodeFig, ...
+    ceil(numel(dataMainFolders)/2),2,'TileSpacing','compact','Padding','compact');
+title(electrodeLayout,'Selected-electrode TRFs averaged across available chunks');
 
-familyData = nan(numel(uniqueFamilies),nPlotChunks);
+electrodeMapFig = figure('Name','Electrode locations matching TRF colours', ...
+    'Units','normalized','Position',[0.05,0.08,0.90,0.80]);
+electrodeMapLayout = tiledlayout(electrodeMapFig, ...
+    ceil(numel(dataMainFolders)/2),2,'TileSpacing','compact','Padding','compact');
+title(electrodeMapLayout,'Electrode colours match the corresponding TRF curves');
 
-for k = 1:numel(uniqueFamilies)
-    idx = families == uniqueFamilies(k);
-    familyData(k,:) = mean(data(idx,:),1,'omitnan');
+for d = 1:numel(dataMainFolders)
+    curves = [];
+    referenceT = [];
+    electrodeSum = [];
+    referenceElectrodeLabels = strings(0);
+    referenceRoiIdx = [];
+    referenceChanlocs = [];
+
+    for chunk = 1:nChunks
+        filename = sprintf('trfOut_10sChunk_%s%d.mat', ...
+            dataMainFolders{d},chunk);
+        filepath = fullfile(resultsDir,filename);
+
+        if ~isfile(filepath)
+            continue
+        end
+
+        S = load(filepath,'modelAll','chanlocs');
+        % Average models without normalising their weights.
+        model = mTRFmodelAvg(S.modelAll,0);
+        lag = model.t(:);
+        weights = reshape(model.w,numel(lag),[]);
+        roiIdx = selectScalpROI(S.chanlocs,size(weights,2), posteriorRoiCentre,posteriorRoiRadius);
+
+        electrodeLabels = strtrim(string({S.chanlocs.labels}));
+        if isempty(referenceT)
+            referenceT = lag;
+            referenceElectrodeLabels = electrodeLabels;
+            referenceRoiIdx = roiIdx;
+            referenceChanlocs = S.chanlocs;
+            electrodeSum = zeros(size(weights));
+        elseif ~isequal(referenceT,lag) || ...
+                ~isequal(referenceElectrodeLabels,electrodeLabels) || ...
+                ~isequal(referenceRoiIdx,roiIdx)
+            warning('Lag grid, channel order or ROI differs: skipping %s',filename);
+            continue
+        end
+        electrodeSum = electrodeSum + weights;
+
+        % One regional time course per chunk.
+        curves(:,end+1) = mean(weights(:,roiIdx),2);
+    end
+
+    ax = nexttile(layout);
+    hold(ax,'on');
+
+    if isempty(curves)
+        title(ax,dataMainFoldersLabels{d},'Interpreter','none');
+        electrodeAx = nexttile(electrodeLayout,d);
+        title(electrodeAx,dataMainFoldersLabels{d},'Interpreter','none');
+        axis(electrodeAx,'off');
+        mapAx = nexttile(electrodeMapLayout,d);
+        title(mapAx,dataMainFoldersLabels{d},'Interpreter','none');
+        axis(mapAx,'off');
+        continue
+    end
+
+    % Grey: individual chunks. Blue: their average.
+    plot(ax,referenceT,curves, ...
+        'Color',[0.8,0.8,0.8],'HandleVisibility','off');
+    plot(ax,referenceT,mean(curves,2), ...
+        'Color',[0,0.447,0.741],'LineWidth',2);
+
+    xline(ax,300,'k--','HandleVisibility','off');
+    xline(ax,500,'k--','HandleVisibility','off');
+    yline(ax,0,'k:','HandleVisibility','off');
+
+    title(ax,sprintf('%s (%d chunks)', ...
+        dataMainFoldersLabels{d},size(curves,2)), ...
+        'Interpreter','none');
+    xlabel(ax,'Latency after word onset (ms)');
+    ylabel(ax,'Signed posterior TRF weight');
+    grid(ax,'on');
+
+    % One grid panel per series: a chunk-averaged curve per electrode.
+    meanElectrodeWeights = electrodeSum / size(curves,2);
+    electrodeAx = nexttile(electrodeLayout,d);
+    electrodeLines = plot(electrodeAx,referenceT, ...
+        meanElectrodeWeights(:,referenceRoiIdx),'LineWidth',1.5);
+    electrodeColours = lines(numel(referenceRoiIdx));
+    if numel(referenceRoiIdx) > 7
+        electrodeColours = turbo(numel(referenceRoiIdx));
+    end
+    for e = 1:numel(electrodeLines)
+        electrodeLines(e).Color = electrodeColours(e,:);
+    end
+    xline(electrodeAx,300,'--','HandleVisibility','off');
+    xline(electrodeAx,500,'--','HandleVisibility','off');
+    yline(electrodeAx,0,'--','HandleVisibility','off');
+    xlabel(electrodeAx,'Latency after word onset (ms)');
+    ylabel(electrodeAx,'Signed TRF weight');
+    title(electrodeAx,sprintf('Selected electrodes: %s (mean of %d chunks)', ...
+        dataMainFoldersLabels{d},size(curves,2)),'Interpreter','none');
+    legend(electrodeAx,electrodeLines, ...
+        referenceElectrodeLabels(referenceRoiIdx), ...
+        'Interpreter','none','Location','bestoutside');
+    grid(electrodeAx,'on');
+
+    % Location-only topoplot: marker colour identifies an electrode, not weight.
+    mapAx = nexttile(electrodeMapLayout,d);
+    [~,locationXY] = selectScalpROI(referenceChanlocs, ...
+        numel(referenceChanlocs),posteriorRoiCentre,posteriorRoiRadius);
+    validLocations = all(isfinite(locationXY),2);
+    locationRadii = sqrt(sum(locationXY(validLocations,:).^2,2));
+    locationPlotRadius = max(0.5,min(1,max(locationRadii)*1.02));
+    axes(mapAx);
+    topoplot([],referenceChanlocs,'style','blank','electrodes','on', ...
+        'plotrad',locationPlotRadius,'emarker',{'.',[0.65,0.65,0.65],5,1});
+    hold(mapAx,'on');
+    % topoplot plots [radius*sin(theta), radius*cos(theta)], scaled to 0.5.
+    locationScale = 0.5/locationPlotRadius;
+    locationMarkers = gobjects(numel(referenceRoiIdx),1);
+    for e = 1:numel(referenceRoiIdx)
+        ch = referenceRoiIdx(e);
+        markerX = -locationXY(ch,1)*locationScale;
+        markerY = locationXY(ch,2)*locationScale;
+        locationMarkers(e) = plot3(mapAx,markerX,markerY,2.2,'o', ...
+            'MarkerFaceColor',electrodeColours(e,:), ...
+            'MarkerEdgeColor','k','MarkerSize',8);
+    end
+    legend(mapAx,locationMarkers,referenceElectrodeLabels(referenceRoiIdx), ...
+        'Interpreter','none','Location','bestoutside');
+    title(mapAx,dataMainFoldersLabels{d},'Interpreter','none');
 end
 
-meanFamily = mean(familyData,1,'omitnan');
-semFamily = std(familyData,0,1,'omitnan') ...
-    ./ sqrt(sum(isfinite(familyData),1));
+%% Scalp topography for each dataset
+figure('Name','300–500 ms TRF topographies by dataset');
+layout = tiledlayout('flow','TileSpacing','compact');
 
-timeN400 = (0:nPlotChunks-1)*defaultChunkLength ...
-    + defaultChunkLength/2;
+for d = 1:numel(dataMainFolders)
+    chunkMaps = [];
+    referenceLabels = strings(0);
+    mapChanlocs = [];
 
-figure(35);
-clf;
-hold on;
+    for chunk = 1:nChunks
+        filename = sprintf('trfOut_10sChunk_%s%d.mat', ...
+            dataMainFolders{d},chunk);
+        filepath = fullfile(resultsDir,filename);
 
-errorbar(timeN400,meanFamily,semFamily,'-o','LineWidth',2);
-yline(0,'--');
-xline(35,'r--');
+        if ~isfile(filepath)
+            continue
+        end
 
-xlabel('Time (s)');
-ylabel('Normalised signed Pz amplitude');
-title('Average N400 across dataset families (equal weighting)');
-grid on;
+        S = load(filepath,'modelAll','chanlocs');
+        model = mTRFmodelAvg(S.modelAll,0);
 
-fprintf('Number of dataset families: %d\n',numel(uniqueFamilies));
+        lag = model.t(:);
+        weights = reshape(model.w,numel(lag),[]);
+        window = lag >= 300 & lag <= 500;
+        labels = strtrim(string({S.chanlocs.labels}));
 
+        if ~any(window) || size(weights,2) ~= numel(labels)
+            warning('Invalid dimensions or time window: %s',filename);
+            continue
+        end
 
-%% Compare word count and N400 across dataset families
+        if isempty(chunkMaps)
+            referenceLabels = labels;
+            mapChanlocs = S.chanlocs;
+        elseif ~isequal(referenceLabels,labels)
+            warning('Channel order differs: skipping %s',filename);
+            continue
+        end
 
-% Use the same entries included in the N400 analysis
-wordData = wordCountData(validDatasets,1:nPlotChunks);
+        % One 300–500 ms mean weight per electrode, per chunk.
+        chunkMaps(:,end+1) = mean(weights(window,:),1)';
+    end
 
-% Group word counts by dataset family
-familyWordData = nan(numel(uniqueFamilies),nPlotChunks);
+    ax = nexttile(layout);
 
-for k = 1:numel(uniqueFamilies)
+    if isempty(chunkMaps)
+        title(ax,dataMainFoldersLabels{d},'Interpreter','none');
+        axis(ax,'off');
+        continue
+    end
 
-    idx = families == uniqueFamilies(k);
+    % Average the available chunks with equal weight.
+    mapValues = mean(chunkMaps,2);
 
-    % Mean across conditions within each family
-    familyWordData(k,:) = mean(wordData(idx,:),1,'omitnan');
+    axes(ax);
+    % Highlight exactly the circle-selected electrodes used in the curves.
+    roiIdx = selectScalpROI(mapChanlocs,numel(mapValues), posteriorRoiCentre,posteriorRoiRadius);
+    topoplot(mapValues,mapChanlocs, 'electrodes','on', 'emarker2',{roiIdx,'o','k',8,2});
+    colorbar;
 
+    title(ax,sprintf('%s (%d chunks)', ...
+        dataMainFoldersLabels{d},size(chunkMaps,2)), ...
+        'Interpreter','none');
 end
 
-% Average across dataset families
-meanFamilyWords = mean(familyWordData,1,'omitnan');
-
-nFamilyWords = sum(isfinite(familyWordData),1);
-
-semFamilyWords = std(familyWordData,0,1,'omitnan') ...
-    ./ sqrt(nFamilyWords);
-
-% N400 values from the equal-family-weighting analysis
-meanFamilyN400 = mean(familyData,1,'omitnan');
-
-semFamilyN400 = std(familyData,0,1,'omitnan') ...
-    ./ sqrt(sum(isfinite(familyData),1));
-
-timeN400 = (0:nPlotChunks-1)*defaultChunkLength ...
-    + defaultChunkLength/2;
-
-figure(36);
-clf;
-
-% Word count
-subplot(2,1,1);
-bar(timeN400,meanFamilyWords);
-hold on;
-
-errorbar(timeN400,meanFamilyWords,semFamilyWords, ...
-    'k.','LineWidth',1.5);
-
-xline(35,'r--');
-xlabel('Time (s)');
-ylabel('Mean word count');
-title('Average words per chunk (equal family weighting)');
-xticks(timeN400);
-grid on;
-
-% N400
-subplot(2,1,2);
-
-errorbar(timeN400,meanFamilyN400,semFamilyN400, ...
-    '-o','LineWidth',2);
-
-xline(35,'r--');
-yline(0,'k--');
-
-xlabel('Time (s)');
-ylabel('Normalised signed Pz amplitude');
-title('Average N400 response (equal family weighting)');
-xticks(timeN400);
-grid on;
-
-
-%% Compare word counts around 35 seconds
-
-wordResults35 = table( ...
-    uniqueFamilies(:), ...
-    familyWordData(:,3), ...
-    familyWordData(:,4), ...
-    familyWordData(:,5), ...
-    familyWordData(:,4) - ...
-        (familyWordData(:,3)+familyWordData(:,5))/2, ...
-    'VariableNames', ...
-    {'Dataset','Words25s','Words35s','Words45s','Difference35'});
-
-disp(wordResults35);
-
-%% 
+title(layout,'Mean signed TRF weights: 300–500 ms');

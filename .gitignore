@@ -62,3 +62,8 @@ slprj/
 
 # macOS
 .DS_Store
+
+# Local progress reports and AI working instructions
+/progressReports/
+/AI context and instructions.md
+/AGENTS.md

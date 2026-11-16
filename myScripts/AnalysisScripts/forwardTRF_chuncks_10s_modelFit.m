@@ -36,8 +36,11 @@ eeglab
 %                         3, 4, 3, 4, ...
 %                         3, 11, 3, 3];
 
-dataMainFolders = {'cocktailAttSwitch/'};
-stimFeatureDataset = [4];
+% ----Word Onset (Supersubject)----
+dataMainFolders = {'LalorNatSpeech/', 'cocktailAttSwitch/', 'cocktailAttSwitch/', ...
+                        'podcastListeningEEG/', 'ComedyShowEEG/', 'speechEmotionAdultEEG/'};
+stimFeatureDataset = [4, 3, 4, ...
+                        3, 11, 3];
 
 superSub = true;
 
@@ -168,7 +171,7 @@ for iiDataset = 1:length(dataMainFolders)
 
     stimIdx = stimFeatureDataset(iiDataset);  % stim feature for the current dataset
 
-    chunkLength = 100;
+    chunkLength = 20;
     maxChunks = 20;
     
     conditionLabels = unique(stim.condIdxs, 'stable');

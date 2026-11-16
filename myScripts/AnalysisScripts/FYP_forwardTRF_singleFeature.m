@@ -1,324 +1,379 @@
 
-%% ============SETUP============
-clear all
+% Cognition and Natural Sensory Processing (CNSP) open-science initiative
+% Forward TRF script
+%
+% Original script:
+% CNSP2025_forwardTRF_example1.m
+% Author: Giovanni M. Di Liberto (2025)
+%
+% FYP adaptation:
+% Full-trial Word Onset TRF analysis (no 10-second chunking)
+
+clear
 close all
+clc
 
-addpath ../libs/cnsp_utils
-addpath ../libs/cnsp_utils/cnd
-addpath ../libs/mTRF-Toolbox_v2/mtrf
-addpath ../libs/NoiseTools
-addpath ../libs/eeglab
-eeglab
+%% ============ SETUP ============
 
-%% ============SELECTING DATASETS & STIMULUS FEATURES============
-
-% ----Envelope----
-% dataMainFolders = {'AAD_KULeuven/', 'AliceSpeech/', 'diliBach/', 'FDSpeech_L1/', 'FDSpeech_L2/', ...
-%     'LalorNatSpeech/', 'LalorNatSpeechReverse/', 'SparrKULee1', 'childStoriesEEG_Sysoeva/', 'cocktailAttSwitch/', ...
-%     'cocktailAttSwitch/', 'fNIRS_podcast/', 'musicImagery/', 'polyphonicBach/', 'spectrotemporalModulationsIgnacio/', ...
-%     'hyperscanningAmir_Listening/', 'podcastListeningEEG/', 'ComedyShowEEG/', 'speechEmotionAdultEEG/', 'speechTrustEEG/', ...
-%     'sungSpeechCantisani_melody', 'sungSpeechCantisani_song'};
-
-%     stimFeatureDataset = [1, 1, 1, 1, 1, ...
-%                             1, 1, 1, 1, 1, ...
-%                             2, 1, 1, 3, 1, ...
-%                             1, 1, 1, 1, 1, ...
-%                             1, 1];
-
-% featureName = "envelope"
-
-% ----Word Onset----
-dataMainFolders = {'AliceSpeech/', 'FDSpeech_L1/', 'LalorNatSpeech/', 'childStoriesEEG_Sysoeva/', ...
-    'cocktailAttSwitch/', 'cocktailAttSwitch/', 'fNIRS_podcast/', 'hyperscanningAmir_Listening/', ...
-    'podcastListeningEEG/', 'ComedyShowEEG/', 'speechEmotionAdultEEG/', 'speechTrustEEG/', };
-
-stimFeatureDataset = [2, 5, 4, 2, 3, 4, 3, 4, 3, 11, 3, 3];
-
-featureName = "wordOnset";
-
-%% Dataset Paths & Output
+% This script should be saved inside standardAnalysisScripts/
 scriptFolder = fileparts(mfilename('fullpath'));
-dataCNDSubFolder = 'dataCND/';
-resultDir = fullfile(scriptFolder, 'resultsChunks', featureName);
-if ~exist(resultDir, 'dir')
+projectRoot = '/Users/manon/Documents/Uni/Trinity4/FYP/CNSP-resources/CNSP';
+
+addpath(fullfile(projectRoot,'exampleScripts'));
+addpath(fullfile(projectRoot,'standardAnalysisScripts'));
+addpath(fullfile(projectRoot,'libs','cnsp_utils'));
+addpath(fullfile(projectRoot,'libs','cnsp_utils','cnd'));
+addpath(fullfile(projectRoot,'libs','mTRF-Toolbox_v2','mtrf'));
+addpath(fullfile(projectRoot,'libs','NoiseTools'));
+addpath(fullfile(projectRoot,'libs','eeglab'));
+
+eeglab
+close
+
+%% ============ PARAMETERS ============
+
+% Dataset and feature
+datasetName = 'speechEmotionAdultEEG';
+stimIdx = 3;              % Word Onset for LalorNatSpeech
+condIdx = 1;
+
+reRefType = 'Avg';
+bandpassFilterRange = [1,8];
+
+% TRF hyperparameters
+dirTRF = 1;
+tmin = -100;
+tmax = 600;
+
+lambdas = [1e-4,1e-3,1e-2,1e-1,1e0,1e1,1e2,1e3,1e4];
+
+% Dataset locations
+dataMainFolder = fullfile(projectRoot,'datasets2');
+dataCNDfolder = fullfile(dataMainFolder,datasetName,'dataCND');
+eegFolder = fullfile(dataCNDfolder,'1-8Hz');
+
+% Results folder
+resultDir = fullfile(projectRoot,'myOutputs', ...
+    'fullTrial',datasetName,'wordOnset');
+
+if ~exist(resultDir,'dir')
     mkdir(resultDir);
 end
 
-for iiDataset = 1:length(dataMainFolders)
-    datasetName = dataMainFolders{iiDataset};
-    fprintf('\nProcessing dataset: %s\n', datasetName);
+%% ============ FIND SUBJECTS ============
 
-    dataMainFolder = fullfile(scriptFolder, '..', 'datasets2', dataMainFolders{iiDataset});
-    dataCNDfolder = fullfile(dataMainFolder, 'dataCND');
+% Use already preprocessed EEG
+eegFilenames = dir(fullfile(eegFolder,'pre_dataSub*.mat'));
 
-    % with 'Avg' we compute the mean voltage across the electrodes
-    reRefType = 'Avg'; % or 'Mastoids'
-    bandpassFilterRange = [1,8]; % Hz
+% Exclude the previously generated super-subject
+eegFilenames = eegFilenames( ...
+    ~strcmp({eegFilenames.name},'pre_dataSub100.mat'));
 
-    downFs = [];
-    eegFolder = fullfile(dataCNDfolder, '1-8Hz');
-    eegFilenames = dir(fullfile(eegFolder, 'pre_dataSub*.mat')); % participants files
-    nSubs = length(eegFilenames);
-    fprintf('Found %d subjects\n', nSubs);
+nSubs = length(eegFilenames);
 
-    %% ============The multivariate Temporal Response Function============
-    % 0-10s, 10-20s, etc
+fprintf('Dataset: %s\n',datasetName);
+fprintf('Found %d subjects\n',nSubs);
 
-    %% Load Stim Info
-    % Check whether there is one stimulus file for all subjects
-    sharedStimFile = fullfile(dataCNDfolder, 'dataStim.mat');
+if nSubs == 0
+    error('No preprocessed EEG files found in %s',eegFolder);
+end
 
-    % All subjects share the same stimulus file (dataStim.mat)
-    if isfile(sharedStimFile)
-        singleDataStim = true;
-        stimFilename = sharedStimFile;
-    % All subjects have a seperate stimulus file (dataStim*.mat)
+%% ============ LOAD STIMULUS ============
+
+stimFilenameSame = fullfile(dataCNDfolder,'dataStim.mat');
+
+if ~isfile(stimFilenameSame)
+    error('Expected shared stimulus file: %s',stimFilenameSame);
+end
+
+load(stimFilenameSame,'stim');
+
+fprintf('Loaded stimulus: %s\n',stimFilenameSame);
+
+% Default to one condition if condition indices are absent
+if ~isfield(stim,'condIdxs') || isempty(stim.condIdxs)
+    stim.condIdxs = ones(1,size(stim.data,2));
+end
+
+stim.condIdxs = stim.condIdxs(:)';
+
+fprintf('Feature selected: %d\n',stimIdx);
+disp(stim.names(stimIdx));
+
+%% ============ FORWARD TRF ============
+
+rAll = [];
+rAllElec = [];
+modelAll = struct([]);
+includedSubjectIdx = [];
+bestLambdas = [];
+chanlocs = [];
+
+figure('Name','Full-trial TRF');
+
+for sub = 1:nSubs
+
+    %% Load preprocessed EEG
+    eegPreFilename = fullfile(eegFolder,eegFilenames(sub).name);
+
+    fprintf('\nProcessing %s\n',eegFilenames(sub).name);
+
+    load(eegPreFilename,'eeg');
+
+    subIdx = regexp(eegFilenames(sub).name,'\d+','match');
+    subIdx = str2double(subIdx{1});
+
+    %% Re-reference EEG
+    eeg = cndReref(eeg,reRefType);
+
+    %% Select stimulus feature
+    stimFeature = stim;
+    stimFeature.data = stimFeature.data(stimIdx,:);
+
+    %% Select condition
+    trials2keep = stimFeature.condIdxs == condIdx;
+
+    if numel(eeg.data) ~= numel(stimFeature.data)
+        warning('Subject %d: EEG and STIM trial counts differ',subIdx);
+        continue
+    end
+
+    stimFeature.data = stimFeature.data(:,trials2keep);
+    eeg.data = eeg.data(trials2keep);
+
+    if numel(eeg.data) < 2
+        warning('Subject %d: fewer than 2 trials',subIdx);
+        continue
+    end
+
+    %% Match sampling frequencies
+    % This preserves impulse timing for Word Onset features.
+
+    eeg.fs = double(eeg.fs);
+    stimFeature.fs = double(stimFeature.fs);
+
+    if stimFeature.fs > eeg.fs
+        fprintf('Downsampling STIM: %g -> %g Hz\n', ...
+            stimFeature.fs,eeg.fs);
+
+        stimFeature = cndDownsample(stimFeature,eeg.fs);
+    end
+
+    if stimFeature.fs ~= eeg.fs
+        error('EEG and STIM sampling frequencies do not match');
+    end
+
+    %% Match EEG and stimulus lengths
+    % Keep complete trials rather than fixed-length chunks.
+
+    for tr = 1:numel(eeg.data)
+
+        stimLen = size(stimFeature.data{tr},1);
+        eegLen = size(eeg.data{tr},1);
+
+        minLen = min(stimLen,eegLen);
+
+        stimFeature.data{tr} = double( ...
+            stimFeature.data{tr}(1:minLen,:));
+
+        eeg.data{tr} = double(eeg.data{tr}(1:minLen,:));
+    end
+
+    %% TRF cross-validation
+    % Use default ridge regularisation, matching CNSP2025_forwardTRF_example1.
+    disp('Running mTRFcrossval');
+
+    [stats,t] = mTRFcrossval( ...
+        stimFeature.data, ...
+        eeg.data, ...
+        eeg.fs, ...
+        dirTRF, ...
+        tmin,tmax, ...
+        lambdas, ...
+        'verbose',0);
+
+    % Select optimal regularisation parameter
+    [maxR,bestLambda] = max(squeeze(mean(mean(stats.r,1),3)));
+
+    fprintf('Prediction correlation r = %.5f\n',maxR);
+    fprintf('Best lambda = %g\n',lambdas(bestLambda));
+
+    %% Fit final TRF model
+    % Keep Tikhonov for the final fit, as in CNSP2025_forwardTRF_example1.
+    disp('Running mTRFtrain');
+
+    model = mTRFtrain( ...
+        stimFeature.data, ...
+        eeg.data, ...
+        eeg.fs, ...
+        dirTRF, ...
+        tmin,tmax, ...
+        lambdas(bestLambda), ...
+        'method','Tikhonov', ...
+        'verbose',0);
+
+    %% Store model
+    if isempty(modelAll)
+        modelAll = model;
+        chanlocs = eeg.chanlocs;
     else
-        singleDataStim = false;
-        stimFiles = dir(fullfile(dataCNDfolder, 'dataStim*.mat'));
-
-        if isempty(stimFiles)
-            error('No stimulus files found for %s', datasetName);
-        end
-
-        stimFilename = fullfile(dataCNDfolder, stimFiles(1).name);
-
-    end
-    load(stimFilename, 'stim');
-    fprintf('Loaded stimulus file: %s\n', stimFilename);
-
-    % Downsampling stim if necessary
-    stim.data = cellfun(@double, stim.data, 'UniformOutput', false);
-    stim.fs = double(stim.fs);
-    downFs = double(downFs);
-
-    if ~isfield(stim,'condIdxs')
-        stim.condIdxs = ones(size(stim.data,2),1);
+        modelAll(end+1) = model;
     end
 
-    %% TRF Parameters and time windows
-    % hyperparameters
-    tmin = -100;
-    tmax = 600; % 400 for envelope
-    lambdas = [1e-6,1e-3,1e-4,1e-2,1e-1,1e0,1e2,1e3,1e4]; % regularisation param
-    dirTRF = 1; % Forward TRF model (direction)
+    rAll(end+1) = maxR;
 
-    stimIdx = stimFeatureDataset(iiDataset);  % stim feature for the current dataset
+    rAllElec(:,end+1) = squeeze( ...
+        mean(stats.r(:,bestLambda,:),1));
 
-    chunkLength = 10
-    maxChunks = 20
+    includedSubjectIdx(end+1) = subIdx;
+    bestLambdas(end+1) = lambdas(bestLambda);
 
-    for cond2select = 1:length(unique(stim.condIdxs))
-        for ii = 1:maxChunks
-            fprintf('Condition %d, chunk %d\n', cond2select, ii);
+    %% TRF visualisation
+    mTRF_plotForwardTRF(eeg,modelAll,rAllElec);
 
-            % TRF
-            rAll = []; % one prediction correlation per subject (averaged across electrodes)
-            rAllElec = []; % prediction correlation for each electrode and subject
-            modelAll = struct([]); % TRF model fitted for each subject
-            includedSubjectIdx = []; % Ids for subject successfully included
-            chanlocs = [];
+    subplot(2,2,3);
+    title('Word Onset TRF');
 
-            wordCountMeanAll = [];
-            wordCountStdAll = [];   
-            
-            %% Loading each subject's EEG and stimulus data
-            for sub = 1:nSubs
-                toBreak = false;
+    drawnow;
 
-                subIdx = regexp(eegFilenames(sub).name, '\d+', 'match');
-                subIdx = str2double(subIdx{1});
+    fprintf('Mean r so far = %.5f\n',mean(rAll));
+end
 
-                fprintf('\nProcessing subject %d\n', subIdx);
+%% ============ SAVE RESULTS ============
 
-                eegFilename = fullfile(eegFolder, eegFilenames(sub).name);
-                load(eegFilename, 'eeg');
+if isempty(modelAll)
+    error('No TRF models were fitted.');
+end
 
-                if ~singleDataStim
-                    stimFilename = fullfile(dataCNDfolder, sprintf('dataStim%d.mat', subIdx));
-                    load(stimFilename, 'stim');
-                    stim.fs = double(stim.fs);
-                end
+nIncluded = numel(modelAll);
 
-                stimFeature = stim;
+save(fullfile(resultDir,'TRF_fullTrial.mat'), ...
+    'modelAll','rAll','rAllElec', ...
+    'chanlocs','includedSubjectIdx','bestLambdas', ...
+    'datasetName','stimIdx','condIdx', ...
+    'tmin','tmax','lambdas','bandpassFilterRange','reRefType');
 
-                % select feature name
-                if iscell(stimFeature.names)
-                    stimFeature.names = stimFeature.names{stimIdx};
-                end
-                stimFeature.data = stimFeature.data(stimIdx, :);
-                if ~isfield(stimFeature, 'condIdxs') || isempty(stimFeature.condIdxs)
-                    stimFeature.condIdxs = ones(1, numel(stimFeature.data));
-                end
+savefig(gcf,fullfile(resultDir,'TRF_overview.fig'));
 
-                %% Count words per interval
-                wordCounts = 0;
-                if strcmpi(featureName, 'wordOnset')
-                    originalFs = double(stimFeature.fs);
-                    wordStart = 1 + round(originalFs * chunkLength * (ii - 1));
-                    wordEnd = round(originalFs * chunkLength * ii);
-                    wordCounts = nan(1, numel(stimFeature.data));
+fprintf('\nSuccessfully fitted %d subjects\n',nIncluded);
 
-                    for tr = 1:numel(stimFeature.data)
-                        wordSignal = stimFeature.data{tr};
-                        if wordEnd <= size(wordSignal, 1)
-                            wordChunk = wordSignal(wordStart:wordEnd, :);
-                            wordCounts(tr) = nnz(wordChunk);
-                        end
-                    end
-                end
+%% ============ GROUP-LEVEL TRF ============
 
-                % Match stimulus sampling freq to preprocessed EEG
-                eeg.fs = double(eeg.fs);
-                stimFeature.fs = double(stimFeature.fs);
+% Average the fitted TRF weights across subjects.
+% No averaging of raw EEG across subjects.
 
-                if stimFeature.fs ~= eeg.fs
+t = modelAll(1).t;
 
-                    fprintf('Resampling STIM from %g Hz to %g Hz\n', stimFeature.fs, eeg.fs);
+nLags = numel(t);
+nChans = size(modelAll(1).w,3);
 
-                    oldFs = stimFeature.fs;
-                    newFs = eeg.fs;
+W = zeros(nIncluded,nLags,nChans);
 
-                    for tr = 1:numel(stimFeature.data)
-                        stimFeature.data{tr} = resample(double(stimFeature.data{tr}), newFs, oldFs);
-                    end
+for s = 1:nIncluded
+    W(s,:,:) = modelAll(s).w;
+end
 
-                    stimFeature.fs = newFs;
-                end
+% Mean TRF across subjects
+avgTRF = squeeze(mean(W,1));
 
-                assert(stimFeature.fs == eeg.fs, 'EEG and STIM sampling frequencies do not match');
+%% ============ POSTERIOR SPATIAL ROI ============
 
-                % Save actual sampling frequency
-                downFs = eeg.fs;
-                fprintf('EEG fs = %g Hz | STIM fs = %g Hz\n', eeg.fs, stimFeature.fs);
+% Circular ROI in the 2-D scalp projection (nose up, head radius = 0.5).
+% x: left/right; y: front/back. Negative y selects the back of the head.
+% These are geometric settings, independent of the fitted TRF amplitudes.
+roiCentre = [0,-0.30];
+roiRadius = 0.18;
 
-                % Skip subjects where EEG and stimulus trial counts do not match
-                if numel(stimFeature.data) ~= numel(eeg.data)
-                    warning('Skipping subject %d: STIM has %d trials, EEG has %d trials', subIdx, numel(stimFeature.data), numel(eeg.data));
-                    continue
-                end
-
-                [stimFeature,eeg] = cndCheckStimNeural(stimFeature,eeg);
-                stimFeature = cndNormalise(stimFeature);
-                eeg = cndNormalise(eeg);
-                [stimFeature,eeg] = cndCutSameLength(stimFeature,eeg);
-
-                %% TRF crossvalidation
-                sampStart = 1+eeg.fs*chunkLength*(ii-1);
-                sampEnd = eeg.fs*chunkLength*(ii);
-
-                for jjTr = 1:length(eeg.data)
-                    if sampEnd > size(eeg.data{jjTr}, 1)
-                        toBreak = true;
-                    end
-                end
-                if toBreak
-                    fprintf('Skipping subject %d: insufficient data for chunk %d\n', subIdx, ii);
-                    continue
-                end
-                % extracting the data
-                stimFeature.data = cellfun(@(x) x(sampStart:sampEnd,:), stimFeature.data,'UniformOutput',false);
-                eeg.data = cellfun(@(x) x(sampStart:sampEnd,:), eeg.data,'UniformOutput',false);
-                
-                % Cross validation & choosing the best lambda
-                disp('Running mTRFcrossval')
-
-                conditions = unique(stimFeature.condIdxs, 'stable');
-
-                % Skip subjects without the requested condition
-                if cond2select > numel(conditions)
-                    warning('Skipping subject %d: condition %d unavailable', subIdx, cond2select);
-                    continue
-                end
-
-                if iscell(stimFeature.condIdxs)
-                    trials2keep = strcmp(stimFeature.condIdxs, conditions{cond2select});
-                else
-                    trials2keep = stimFeature.condIdxs == conditions(cond2select);
-                end
-
-                % cross validation
-                [stats,t] = mTRFcrossval( ...
-                    stimFeature.data(trials2keep), ... % selected trails
-                    eeg.data(trials2keep), ... % corresponding EEG trials
-                    eeg.fs, ...    % sampling freq
-                    dirTRF, ...    % forward model
-                    tmin,tmax, ... % time lag
-                    lambdas, ...   % regularization values to evaluate
-                    'verbose',0);
-
-                % Calculating optimal lambda
-                [maxR,bestLambda] = max(squeeze(mean(mean(stats.r,1),3)));
-                disp(['r = ',num2str(maxR)])
-
-                rAll(end+1) = maxR;
-                rAllElec(:,end+1) = squeeze(mean(stats.r(:,bestLambda,:),1));
-
-                %% Fit TRF model ith optimal regularisation parameter
-                disp('Running mTRFtrain')
-
-                conditions = unique(stimFeature.condIdxs, 'stable');
-
-                if iscell(stimFeature.condIdxs)
-                    trials2keep = strcmp(stimFeature.condIdxs, conditions{cond2select});
-                else
-                    trials2keep = stimFeature.condIdxs == conditions(cond2select);
-                end
-                
-                % fitting the final TRF model
-                model = mTRFtrain( ...
-                    stimFeature.data(trials2keep), ... % signals from selected trials
-                    eeg.data(trials2keep), ... % eeg signals from those trials
-                    eeg.fs, ... % sampling freq
-                    dirTRF, ... % forward model
-                    tmin, tmax, ... % time lag
-                    lambdas(bestLambda), ... % regularisation
-                    'verbose', 0); % disale detailed output
-                % output: 
-                % - model.w = estimated TRF weights
-                % - model.t = time lags
-                % - model.b = intercept
-
-                %% Store TRF model
-                if isempty(modelAll)
-                    modelAll = model;
-
-                    if isfield(eeg,'chanlocs') && ~isempty(eeg.chanlocs)
-                        chanlocs = eeg.chanlocs;
-                    else
-                        chanlocs = [];
-                    end
-                else
-                    modelAll(end+1) = model;
-                end
-
-                includedSubjectIdx(end+1) = subIdx;
-                disp(['Mean r = ',num2str(mean(rAll))])
-                
-                selectedWordCounts = wordCounts(trials2keep);
-                meanWords = mean(selectedWordCounts, 'omitnan');
-                stdWords = std(selectedWordCounts, 0, 'omitnan');
-                
-                wordCountMeanAll(end+1) = meanWords;
-                wordCountStdAll(end+1) = stdWords;
-
-                fprintf('Mean words per trial: %.2f +/- %.2f\n', meanWords, stdWords);
-            end
-            
-            %% Saving the TRF results
-            if ~isempty(modelAll)
-                filename = sprintf( ...
-                    'trfOut_10sChunk_%s_cond%d_stim%d_%d.mat', ...
-                    char(strip(string(dataMainFolders{iiDataset}), '/')), ...
-                    cond2select, stimIdx, ii);
-
-                save(fullfile(resultDir, filename), ...
-                    'chanlocs', 'modelAll', 'rAllElec', ...
-                    'bandpassFilterRange', 'downFs', 'reRefType', ...
-                    'dataMainFolder', 'nSubs', 'stimIdx', ...
-                    'tmin', 'tmax', 'lambdas', 'includedSubjectIdx', ...
-                    'wordCountMeanAll', 'wordCountStdAll');
-            end
-        end
+if numel(chanlocs) ~= nChans || ...
+        ~all(isfield(chanlocs,{'theta','radius'}))
+    error('Spatial ROI requires theta/radius coordinates for every model channel.');
+end
+scalpXY = nan(nChans,2);
+for ch = 1:nChans
+    theta = chanlocs(ch).theta;
+    radius = chanlocs(ch).radius;
+    if isnumeric(theta) && isscalar(theta) && isfinite(theta) && ...
+            isnumeric(radius) && isscalar(radius) && isfinite(radius) && radius >= 0
+        scalpXY(ch,:) = [-radius*sind(theta),radius*cosd(theta)];
     end
 end
+validCoordinates = all(isfinite(scalpXY),2);
+roiDistance = sqrt(sum((scalpXY-roiCentre).^2,2));
+roiIdx = find(validCoordinates & roiDistance <= roiRadius);
+if isempty(roiIdx)
+    error('No electrodes fall within the spatial ROI. Check coordinates, centre and radius.');
+end
+if any(~validCoordinates)
+    warning('Excluding %d channels with missing scalp coordinates from ROI selection.', ...
+        sum(~validCoordinates));
+end
+roiLabels = string({chanlocs(roiIdx).labels});
+fprintf('\nPosterior spatial ROI: %d electrodes, centre [%g, %g], radius %g\n', ...
+    numel(roiIdx),roiCentre(1),roiCentre(2),roiRadius);
+disp(roiLabels);
+
+% Average selected electrodes within each subject, then average subjects.
+roiW = mean(W(:,:,roiIdx),3);
+meanROI = mean(roiW,1);
+semROI = std(roiW,0,1) ./ sqrt(nIncluded);
+n400Window = t >= 300 & t <= 500;
+subjectROI300to500 = mean(roiW(:,n400Window),2);
+
+roiFig = figure('Name','Full-trial Word Onset TRF - Posterior Spatial ROI', ...
+    'Position',[100,100,1250,500]);
+roiLayout = tiledlayout(roiFig,1,2,'TileSpacing','compact');
+ax = nexttile(roiLayout);
+hold(ax,'on');
+lagRow = t(:)';
+semPatch = fill(ax,[lagRow,fliplr(lagRow)], ...
+    [meanROI+semROI,fliplr(meanROI-semROI)],[0.75,0.85,1], ...
+    'EdgeColor','none','FaceAlpha',0.5);
+meanLine = plot(ax,t,meanROI,'LineWidth',2);
+xline(ax,300,'k--','HandleVisibility','off');
+xline(ax,500,'k--','HandleVisibility','off');
+yline(ax,0,'k:','HandleVisibility','off');
+xlabel(ax,'Latency after word onset (ms)');
+ylabel(ax,'Signed TRF weight');
+title(ax,sprintf('Posterior spatial ROI (%d electrodes)',numel(roiIdx)));
+legend(ax,[meanLine,semPatch],{'Mean TRF','Mean +/- SEM'},'Location','best');
+grid(ax,'on');
+
+% Show the selected region separately, without changing the scalp topography.
+ax = nexttile(roiLayout);
+hold(ax,'on');
+circleAngle = linspace(0,2*pi,200);
+plot(ax,0.5*cos(circleAngle),0.5*sin(circleAngle),'k-');
+plot(ax,[-0.08,0,0.08],[0.49,0.57,0.49],'k-');
+scatter(ax,scalpXY(validCoordinates,1),scalpXY(validCoordinates,2),15,[0.6,0.6,0.6],'filled');
+scatter(ax,scalpXY(roiIdx,1),scalpXY(roiIdx,2),35,[0,0.447,0.741],'filled');
+plot(ax,roiCentre(1)+roiRadius*cos(circleAngle), ...
+    roiCentre(2)+roiRadius*sin(circleAngle),'b--');
+axis(ax,'equal');
+axis(ax,'off');
+title(ax,'Selected electrodes');
+savefig(roiFig,fullfile(resultDir,'TRF_posteriorSpatialROI.fig'));
+
+%% ============ N400 TOPOGRAPHY ============
+
+% Mean signed TRF weights between 300 and 500 ms
+topographyValues = mean(avgTRF(n400Window,:),1);
+
+figure('Name','N400 scalp topography');
+
+topoplot(topographyValues,chanlocs,'electrodes','on');
+
+colorbar;
+title('Word Onset TRF - 300 to 500 ms');
+
+savefig(gcf,fullfile(resultDir,'N400_topography.fig'));
+
+%% ============ SAVE GROUP ANALYSIS ============
+
+save(fullfile(resultDir,'N400_groupAnalysis.mat'), ...
+    'W','avgTRF','t', ...
+    'roiCentre','roiRadius','scalpXY','roiIdx','roiLabels', ...
+    'roiW','meanROI','semROI','subjectROI300to500', ...
+    'topographyValues','n400Window');
+
+fprintf('\nFull-trial analysis completed.\n');
+fprintf('Results saved in:\n%s\n',resultDir);
