@@ -171,7 +171,7 @@ for iiDataset = 1:length(dataMainFolders)
 
     stimIdx = stimFeatureDataset(iiDataset);  % stim feature for the current dataset
 
-    chunkLength = 20;
+    chunkLength = 60;
     maxChunks = 20;
     
     conditionLabels = unique(stim.condIdxs, 'stable');

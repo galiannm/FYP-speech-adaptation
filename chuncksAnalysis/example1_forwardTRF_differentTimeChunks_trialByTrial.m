@@ -36,20 +36,14 @@ addpath ../libs/NoiseTools
 addpath ../libs/eeglab
 eeglab
 
-% envelope
-dataMainFolders = {'AAD_KULeuven', 'AliceSpeech', 'diliBach/', 'FDSpeech_L1', 'FDSpeech_L2', ...
-     'LalorNatSpeech/', 'LalorNatSpeechReverse/', 'SparrKULee1', 'childStoriesEEG_Sysoeva', 'cocktailAttSwitch', ...
-     'cocktailAttSwitch/', 'fNIRS_podcast', 'musicImagery', 'polyphonicBach/', 'spectrotemporalModulationsIgnacio/'};
+% dataMainFolders = {'LalorNatSpeech/','LalorNatSpeechReverse/','diliBach/','emilyDialogue/','AliceSpeech/','cocktailAttSwitch/','anxietyEEG/'};
+dataMainFolders = {'LalorNatSpeech/','LalorNatSpeechReverse/','diliBach/','laughterEEG/','cocktailAttSwitch/','spectrotemporalModulationsIgnacio/'};
+% dataMainFolders = {'LalorNatSpeech/','LalorNatSpeechReverse/','diliBach/','laughterEEG','cocktailAttSwitch/','spectrotemporalModulationsIgnacio'};
 
-% envelope
-stimFeatureDataset = [1,1,1,1,1, ...
-                         1,1,1,1,1, ...
-                         2,1,1,3,1];
-
-
-toPreprocess = zeros(1, length(dataMainFolders));
-
-
+% dataMainFolders = {'spectrotemporalModulationsIgnacio/'};
+% toPreprocess = [0];
+% dataMainFolders = {'musicImagery/'};
+toPreprocess = [0,0,0,0,0,0];
 % dataMainFolders = {'laughterEEG/','musicImagery/'};
 % toPreprocess = [0,0];
 for iiDataset = 1:length(dataMainFolders)
@@ -57,10 +51,8 @@ for iiDataset = 1:length(dataMainFolders)
 disp("*** "+dataMainFolders{iiDataset})
     
 %% Parameters - Natural speech listening experiment
-dataMainFolder = fullfile('datasets2', dataMainFolders{iiDataset});
-dataCNDSubfolder = 'dataCND';
-
-dataCNDPath = fullfile(dataMainFolder, dataCNDSubfolder);
+dataMainFolder = ['../datasets/',dataMainFolders{iiDataset}];
+dataCNDSubfolder = 'dataCND/';
 
 reRefType = 'Mastoids'; % or 'Mastoids'
 bandpassFilterRange = [1,15]; % Hz (indicate 0 to avoid running the low-pass
@@ -87,7 +79,7 @@ for sub = 1:nSubs
     eeg = cndNewOp(eeg,'Load'); % Saving the processing pipeline in the eeg struct
     
     % That dataset did not have a chanlocs in the CND. Fixing the issue
-    if strcmp(dataMainFolder,'../datasets2/spectrotemporalModulationsIgnacio/')
+    if strcmp(dataMainFolder,'../datasets/spectrotemporalModulationsIgnacio/')
         load('chanlocs64.mat')
         eeg.chanlocs = chanlocs;
     end
@@ -173,9 +165,9 @@ end
 
 %% The multivariate Temporal Response Function
 % 0-10s, 10-20s, etc
-if ~strcmp(dataMainFolder,'../datasets2/spectrotemporalModulationsIgnacio/')
+if ~strcmp(dataMainFolder,'../datasets/spectrotemporalModulationsIgnacio/')
     % Loading Stimulus data
-    stimFilename = fullfile(dataCNDPath, 'dataStim.mat');
+    stimFilename = [dataMainFolder,dataCNDSubfolder,'dataStim.mat'];
     disp(['Loading stimulus data: ','dataStim.mat'])
     load(stimFilename,'stim')
     % Downsampling stim if necessary
@@ -216,7 +208,7 @@ dirTRF = 1; % Forward TRF model
 % only few electrodes and/or reduce the TRF window)
 stimIdx = 1; % 1: env; 2: word onset
 
-if ~strcmp(dataMainFolder,'../datasets2/spectrotemporalModulationsIgnacio/')
+if ~strcmp(dataMainFolder,'../datasets/spectrotemporalModulationsIgnacio/')
     % Loading Stimulus data
     stimFilename = [dataMainFolder,dataCNDSubfolder,'dataStim.mat'];
     disp(['Loading stimulus data: ','dataStim.mat'])
@@ -239,7 +231,7 @@ for sub = 1:nSubs
     disp(['Loading preprocessed EEG data: pre_',eegFilenames(sub).name])
     load(eegPreFilename,'eeg')
 
-    if strcmp(dataMainFolder,'../datasets2/spectrotemporalModulationsIgnacio/')
+    if strcmp(dataMainFolder,'../datasets/spectrotemporalModulationsIgnacio/')
         % Loading Stimulus data
         subIdx = regexp(eegFilenames(sub).name, '\d+', 'match');
         subIdx = str2double(subIdx{1});
